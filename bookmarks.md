@@ -1,3 +1,95 @@
+# Saturday, January 10, 2026
+
+## @0xCharlota - Blue Tableware Design Philosophy
+> A few years ago I decided we will only buy blue tableware.
+> Every item is different (which still satisfies my impulsive purchases of ceramics) yet every meal or hosting moment looks intentional and beautiful. https://t.co/oq20b4h7Is
+>
+> *Quoting @Simon Sarris:* In my personal opinion the very first step is doing without.
+>
+> You don't have to have the prettiest things. But you cannot have anything bad or ugly. No chemical blue dawn dish soap container, no lime green sponge. Remove ugliness and even a messy space will look inviting. https://t.co/5IJuQTFhUh
+
+- **Tweet:** https://x.com/0xCharlota/status/2010028730941616486
+- **Quoted:** https://x.com/simonsarris/status/1858682175484305494
+- **What:** A design philosophy of choosing one color (blue) for all tableware creates intentional, cohesive aesthetics while allowing individuality through different ceramic pieces.
+
+---
+
+## @YIMBYLAND - Political Statement on Iran
+> FREE IRAN
+> FREE IRANIAN BRICK MASONS https://t.co/J3XGheAFub
+
+- **Tweet:** https://x.com/YIMBYLAND/status/2010056394503004250
+- **What:** A political statement expressing solidarity with Iran and Iranian brick masons.
+
+---
+
+## @eyad_khrais - Shared Tweet Link
+> https://t.co/i5L6UIPgH8
+
+- **Tweet:** https://x.com/eyad_khrais/status/2010076957938188661
+- **What:** A tweet sharing a link to another X article.
+
+---
+
+## @orenmeetsworld - Swedish Ladder for Kids' Physical Development
+> we have one of these swedish ladders installed upstairs for kids, with the rings as well and couldnt recommend more for getting them stronger, energy out, comfortable moving their body
+>
+> *Quoting @Home Zone:* I went from "oh thats cools" to "wow thats coolest thing ever" https://t.co/9e63LyHAK0
+
+- **Tweet:** https://x.com/orenmeetsworld/status/2010077650036121637
+- **Quoted:** https://x.com/homezone_id/status/2009964711044100145
+- **What:** Personal recommendation for Swedish ladders with rings as an effective tool for building children's strength and body awareness while burning energy.
+
+---
+
+## @BiancoDavinci - Bee Hives Glass Installation in Spain
+> Giant hives hanging from the ceiling enclosed in a glass case with outdoor access at "Home of Bees" in Poyales del Hoyo, Spain. https://t.co/nXK0GNLm66
+
+- **Tweet:** https://x.com/BiancoDavinci/status/2010100648977780951
+- **What:** A unique attraction in Spain featuring giant bee hives suspended in a glass enclosure with outdoor access, allowing visitors to observe bees in a controlled environment.
+
+---
+
+# Friday, January 9, 2026
+
+## @archiexzzz - Design as a Competitive Moat Against AI
+> Are you kidding me?
+>
+> This is the best website design experience I've had in a long, long time. @Shopify  just won my heart with this new Winter Edition web design!
+>
+> Seriously, the bar for good design is so high right now. With all the AI slop out there, the only word-of-mouth you can rely on is having great design taste and building a cult around it.
+>
+> Just take @PrimeIntellect - ultimate design taste. Why wouldn't I send this to my friends or post it online organically?
+>
+> The moat is good design, folks - it's so important with all the AI slop we're seeing today.
+>
+> @tobi please give your design team a big big raise!
+
+- **Tweet:** https://x.com/archiexzzz/status/2009660076521636015
+- **What:** Observation that excellent design serves as a competitive advantage in an era of AI-generated content, using Shopify's Winter Edition design as an example.
+
+---
+
+## @alyssaleann - Gender Differences in Friendship Formation
+> Making friends with women: learn their family history, emotional landscape, personality quirks, media diet, hobbies
+>
+> Making friends with men: learn their One Big Interest and prepare to chat about it when you see them
+
+- **Tweet:** https://x.com/alyssaleann/status/2009669593762279504
+- **What:** Humorous observation about differing social dynamics and conversation patterns in forming friendships across genders.
+
+---
+
+## @BehizyTweets - Argentina Fully Repays US Currency Swap
+> BREAKING: Argentina has FULLY repaid the billions they got from the United States in the currency swap deal orchestrated by Scott Bessent.
+>
+> They only ended up using $2.5 billion of the $20 billion provided by the Treasury Department. https://t.co/VrkvV9CJF3
+
+- **Tweet:** https://x.com/BehizyTweets/status/2009752288051740672
+- **What:** Argentina has repaid their US Treasury currency swap, having only utilized $2.5 billion of the $20 billion facility.
+
+---
+
 # Sunday, January 4, 2026
 
 ## @trq212 - AI alignment and interpretability resources
@@ -692,3 +784,38 @@ it's live now do check it out and would appreciate your feedback https://t.co/DO
 
 - **Tweet:** https://x.com/alexhillman/status/1992252350812270856
 - **What:** Personal reflection on core imperatives with emphasis on keeping humans central to all technology decisions.
+
+---
+
+# Tuesday, August 20, 2024
+
+## @cremieuxrecueil - Agent Orange Exposure in Seveso
+> The most extreme Agent Orange exposure incident wasn't from a war-torn jungle, it happened in Seveso, Italy when a chemical factory exploded in 1976.
+>
+> This is terrible, but also lucky, because unlike with Vietnam, we can trust Italian data. https://t.co/U8t2ByB4xA
+>
+> *Quoting @cremieuxrecueil:* The contaminant in Agent Orange that allegedly rendered it toxic is 2,3,7,8-tetrachlorodibenzo-p-dioxin, or TCDD. As shown above, it is not elevated in Vietnam veterans compared to non-veterans and levels are not related to Agent Orange exposure.
+>
+> It is not consistently related to cancers, mortality, or anything else: https://t.co/VSbjrZdJMK
+>
+> TCDD is probably not carcinogenic in humans at all, and especially not at the doses people were or are likely to be exposed to: https://t.co/IBGYDBXGvQ
+>
+> TCDD might even be related to lower risk of cancer! (https://t.co/vmVW6vnUs7) But realistically, it's not: what we're seeing is the same thing we see when it's related to higher cancer risk in one-off studies. That is, statistical chance.
+>
+> Even with very large samples, the evidence for associations with cancers is virtually nonexistent. For example, in this case (https://t.co/LHkBjqog0h), they looked at bladder cancer, clearly did a huge number of tests, and after all was said and done, they managed to only get a hazard ratio of 1.04 (1.02-1.06), and they proceeded to prove they were looking for something be looking at, e.g., a bunch of p = 0.04 interactions. Not impressive.
+>
+> The risk from Agent Orange has been overstated by activists and advocates.
+
+- **Tweet:** https://x.com/cremieuxrecueil/status/1825925443372868010
+- **Quoted:** https://x.com/cremieuxrecueil/status/1825762145864131025
+- **What:** Thread about Agent Orange exposure, highlighting a 1976 incident in Seveso, Italy and discussing TCDD toxicity evidence versus media narratives about Vietnam veterans.
+
+---
+
+# Friday, July 12, 2024
+
+## @tszzl - Twitter Platform Comparison
+> twitter was better than https://t.co/xALR39yeNL
+
+- **Tweet:** https://x.com/tszzl/status/1811891423764959391
+- **What:** Commentary on Twitter being better than its current iteration (X).

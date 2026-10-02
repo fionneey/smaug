@@ -173,6 +173,18 @@ Match each bookmark's links against category patterns (check `match` arrays). Us
 
 Add to the `archiveFile` path from config (expand `~` to home directory):
 
+**If creating a NEW file (archiveFile doesn't exist), add YAML frontmatter first:**
+```yaml
+---
+tags:
+  - twitter
+  - bookmarks
+AutoNoteMover: disable
+date created: {YYYY-MM-DD}
+date modified: {YYYY-MM-DD}
+---
+```
+
 **CRITICAL ordering rules for bookmarks.md:**
 
 The file must be in **descending chronological order** (newest dates at TOP, oldest at BOTTOM).
@@ -198,40 +210,107 @@ The file must be in **descending chronological order** (newest dates at TOP, old
 **Standard entry format:**
 ```markdown
 ## @{author} - {descriptive_title}
+#tag1 #tag2
+
 > {tweet_text}
 
 - **Tweet:** {tweet_url}
 - **Link:** {expanded_url}
-- **Tags:** [[tag1]] [[tag2]] (if bookmark has tags from folders)
 - **Filed:** [{filename}](./knowledge/tools/{slug}.md) (if filed)
 - **What:** {1-2 sentence description of what this actually is}
 ```
 
-**Tags format:** Use wiki-link style `[[TagName]]` for each tag. Only include the **Tags:** line if the bookmark has tags in its `tags` array (from folder configuration). Example: `- **Tags:** [[AI]] [[Coding]]`
+**Tags format:** Use inline hashtag style `#tag-name` on the line after the header. Apply intelligent tag classification (see below).
+
+### Intelligent Tag Classification (GTD-Compatible)
+
+Classify each bookmark as **actionable** or **reference** based on content:
+
+**Action Tags (→ Someday-Maybe)** - Apply when content is something TO DO:
+| Content Type | Tag | Notes |
+|--------------|-----|-------|
+| Video/podcast | `#watch` or `#listen` | Video to consume later |
+| Article/paper | `#read` | Article to read later |
+| Tool/software | `#download` | Tool to try/install |
+| Product | `#buy` | Item to purchase |
+| Place | `#visit` | Location to go |
+| Recipe/food | `#eat` | Food to try |
+| Topic to explore | `#research` or `#contemplate` | Deeper investigation needed |
+
+**Reference Tags** - Apply when content is knowledge to STORE (no action required):
+- Insights/observations → domain tag only
+- News/facts → domain tag only
+- Commentary → domain tag only
+
+### Folder → Base Tag Mapping
+
+Convert bookmark folder tags to Obsidian tags:
+
+| Folder | Base Tag | + Action Tag If... |
+|--------|----------|-------------------|
+| art | `#art` | `#creativity` if creating-focused |
+| ai | `#ai` | `#llm` if LLM-specific |
+| dating-relationships | `#seduction` | |
+| interesting | `#interesting` | |
+| autistic-consumerism | `#buy` | Already actionable |
+| autistic-consumerism-2 | `#buy` | Already actionable |
+| culture-wars | `#culture-wars` | |
+| cool-shit | `#cool-shit` | |
+| coding | `#llm/coding` | `#download` if tool |
+| food | `#eat` | Already actionable if recipe |
+| pure-comedy | `#pure-comedy` | |
+| finances | `#personal-financing` | |
+| gaming | `#game` | `#play` if game to try |
+| writing | `#writing` | |
+| writing-2 | `#writing` | |
+| health | `#health` | `#heal` if actionable tip |
+| read-later | `#read` | Already actionable |
+| dharma | `#dharma` | `#contemplate` if practice |
+| drugs | `#drug` | |
+| psychology | `#psychology` | |
+| science | `#research` | |
+| watch-later | `#watch` | Already actionable |
+| learning | `#learning` | `#read` or `#research` if actionable |
+| politics | `#politics` | |
+| our-planet | `#nature` | |
+| brain-mind | `#brain` `#psychology` | |
+| technology | `#technology` | `#download` if tool |
+| nature | `#nature` | |
+| travel | `#travel` | `#visit` if specific place |
+| academia | `#academia` | `#read` if paper |
+| chemical-assistance | `#drug` | |
+| history | `#history` | |
+| philosophy | `#philosophy` | `#contemplate` if practice |
+| fashion | `#style` | `#buy` if product |
+| productivity | `#productivity` | `#productive` if actionable tip |
+
+**New tags:** If content doesn't fit existing tags, create new ones. Report all new tags at end.
 
 **For quote tweets, include the quoted content:**
 ```markdown
 ## @{author} - {descriptive_title}
+#tag1 #tag2
+
 > {tweet_text}
 >
 > *Quoting @{quoted_author}:* {quoted_text}
 
 - **Tweet:** {tweet_url}
 - **Quoted:** {quoted_tweet_url}
-- **Tags:** [[tag1]] [[tag2]] (if bookmark has tags)
 - **What:** {description}
 ```
 
 **For replies, include parent context:**
 ```markdown
 ## @{author} - {descriptive_title}
+#tag1 #tag2
+
 > *Replying to @{parent_author}:* {parent_text}
 >
 > {tweet_text}
 
 - **Tweet:** {tweet_url}
 - **Parent:** {parent_tweet_url}
-- **Tags:** [[tag1]] [[tag2]] (if bookmark has tags)
 - **What:** {description}
 ```
 
@@ -284,8 +363,12 @@ Processed N bookmarks:
 - @author2: Article Title → filed to knowledge/articles/article-slug.md
 - @author3: Plain tweet → captured only
 
+New tags created: #new-tag1, #new-tag2 (or "None" if no new tags)
+
 Committed and pushed.
 ```
+
+**IMPORTANT:** Always report any new tags that were created during processing so the user can review them.
 
 ## Frontmatter Templates
 

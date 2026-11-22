@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { isPaywalled, stripQuerystring } from '../src/processor.js';
+import { classifyLink, isPaywalled, stripQuerystring } from '../src/processor.js';
 
 describe('isPaywalled', () => {
   test('detects NYT as paywalled', () => {
@@ -23,6 +23,11 @@ describe('isPaywalled', () => {
     assert.strictEqual(isPaywalled('https://twitter.com/user/status/123'), false);
   });
 
+  test('matches the host, not a substring of it', () => {
+    assert.strictEqual(isPaywalled('https://www.microsoft.com/blog'), false);
+    assert.strictEqual(isPaywalled('https://example.com/?ref=nytimes.com'), false);
+    assert.strictEqual(isPaywalled('https://www.ft.com/content/abc'), true);
+  });
 });
 
 describe('stripQuerystring', () => {
@@ -44,5 +49,21 @@ describe('stripQuerystring', () => {
   test('handles invalid URLs gracefully', () => {
     const result = stripQuerystring('not-a-url');
     assert.strictEqual(result, 'not-a-url');
+  });
+});
+
+describe('classifyLink', () => {
+  test('types links by their host', () => {
+    assert.strictEqual(classifyLink('https://github.com/user/repo'), 'github');
+    assert.strictEqual(classifyLink('https://youtu.be/abc'), 'video');
+    assert.strictEqual(classifyLink('https://x.com/user/status/123'), 'tweet');
+    assert.strictEqual(classifyLink('https://x.com/user/status/123/photo/1'), 'media');
+    assert.strictEqual(classifyLink('https://example.com/cat.png'), 'image');
+    assert.strictEqual(classifyLink('https://example.com/post'), 'article');
+  });
+
+  test('does not mistake hosts that merely contain x.com for tweets', () => {
+    assert.strictEqual(classifyLink('https://www.netflix.com/title/1'), 'article');
+    assert.strictEqual(classifyLink('https://www.dropbox.com/s/file'), 'article');
   });
 });

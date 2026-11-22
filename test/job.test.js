@@ -9,17 +9,13 @@ import { fileURLToPath } from 'url';
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const fixtures = path.join(testDir, 'fixtures');
 
-// The job prefers these claude binaries over PATH, so a machine with one
-// would run the real CLI instead of the fake
-const realClaude = ['/usr/local/bin/claude', '/opt/homebrew/bin/claude'].find(p => fs.existsSync(p));
-
 // Runs `smaug run --limit 2` in a fresh directory whose config keeps the
-// pending queue at a custom path, with the fake claude CLI on PATH
+// pending queue at a custom path, with the fake claude CLI as the only claude
 let dir;
 let pendingFile;
 
 function runJob(claudeExit) {
-  const result = spawnSync(process.execPath, [path.join(testDir, '../src/cli.js'), 'run', '--limit', '2'], {
+  const result = spawnSync(process.execPath, [path.join(fixtures, 'cli-with-fake-claude.js'), 'run', '--limit', '2'], {
     cwd: dir,
     encoding: 'utf8',
     env: {
@@ -34,7 +30,7 @@ function runJob(claudeExit) {
   return { status: result.status, ids: pending.bookmarks.map(b => b.id) };
 }
 
-describe('smaug run', { skip: realClaude && `a real claude CLI is installed at ${realClaude}` }, () => {
+describe('smaug run', () => {
   beforeEach(() => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smaug-job-'));
     fs.mkdirSync(path.join(dir, 'queue'));

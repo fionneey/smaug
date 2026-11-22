@@ -2,6 +2,8 @@
 // Stands in for the bird CLI in tests: answers `bookmarks`, `likes` and `read`
 // with fixture tweets the way `bird ... --json` prints them. When FAKE_BIRD_LOG
 // is set, each call's arguments are appended to that file as one JSON line.
+// When FAKE_BIRD_PENDING_FILE is set, `read` also adds bookmark 5555555555 to
+// that pending file, standing in for another run changing it mid-fetch.
 import fs from 'fs';
 
 const args = process.argv.slice(2);
@@ -15,6 +17,12 @@ if (command === 'bookmarks') {
 } else if (command === 'likes') {
   process.stdout.write('[]');
 } else if (command === 'read') {
+  const pendingFile = process.env.FAKE_BIRD_PENDING_FILE;
+  if (pendingFile) {
+    const pending = JSON.parse(fs.readFileSync(pendingFile, 'utf8'));
+    pending.bookmarks = [...(pending.bookmarks || []), { id: '5555555555', author: 'other', text: 'Added mid-fetch' }];
+    fs.writeFileSync(pendingFile, JSON.stringify(pending));
+  }
   process.stdout.write(JSON.stringify({
     id,
     text: 'Parent tweet text',

@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { classifyLink, isPaywalled, stripQuerystring } from '../src/processor.js';
+import { classifyLink, fetchContent, isPaywalled, stripQuerystring } from '../src/processor.js';
 
 describe('isPaywalled', () => {
   test('detects NYT as paywalled', () => {
@@ -65,5 +65,58 @@ describe('classifyLink', () => {
   test('does not mistake hosts that merely contain x.com for tweets', () => {
     assert.strictEqual(classifyLink('https://www.netflix.com/title/1'), 'article');
     assert.strictEqual(classifyLink('https://www.dropbox.com/s/file'), 'article');
+  });
+});
+
+describe('fetchContent for GitHub links', () => {
+  // Replaces fetch with one that answers each URL from the given table
+  async function withFetch(responses, fn) {
+    const realFetch = globalThis.fetch;
+    const calls = [];
+    globalThis.fetch = async (url) => {
+      calls.push(url);
+      return responses[url];
+    };
+    try {
+      return { result: await fn(), calls };
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  }
+  const page = { ok: true, text: async () => 'page content '.repeat(100) };
+
+  for (const status of [403, 404]) {
+    test(`falls back to the page when the API answers ${status}`, async () => {
+      const { result, calls } = await withFetch({
+        'https://api.github.com/repos/owner/repo': { ok: false, status },
+        'https://github.com/owner/repo': page
+      }, () => fetchContent('https://github.com/owner/repo', 'github'));
+      assert.strictEqual(result.source, 'direct');
+      assert.deepStrictEqual(calls, ['https://api.github.com/repos/owner/repo', 'https://github.com/owner/repo']);
+    });
+  }
+
+  test('returns repo metadata and README when the API answers', async () => {
+    const { result } = await withFetch({
+      'https://api.github.com/repos/owner/repo': {
+        ok: true,
+        json: async () => ({ name: 'repo', full_name: 'owner/repo', stargazers_count: 5, html_url: 'https://github.com/owner/repo' })
+      },
+      'https://api.github.com/repos/owner/repo/readme': {
+        ok: true,
+        json: async () => ({ content: Buffer.from('# Readme').toString('base64') })
+      }
+    }, () => fetchContent('https://github.com/owner/repo', 'github'));
+    assert.deepStrictEqual(result, {
+      name: 'repo',
+      fullName: 'owner/repo',
+      description: '',
+      stars: 5,
+      language: undefined,
+      topics: [],
+      readme: '# Readme',
+      url: 'https://github.com/owner/repo',
+      source: 'github-api'
+    });
   });
 });

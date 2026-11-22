@@ -3,10 +3,12 @@ import assert from 'node:assert';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { fetchAndPrepareBookmarks } from '../src/processor.js';
 
-const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
+const testDir = path.dirname(fileURLToPath(import.meta.url));
+const fixtures = path.join(testDir, 'fixtures');
 
 // Runs fetchAndPrepareBookmarks against the fake bird CLI in a fresh directory
 // holding an archive with one bookmark already filed and the given pending file.
@@ -81,10 +83,47 @@ describe('fetchAndPrepareBookmarks', () => {
     assert.deepStrictEqual(ids, ['9876543210', '1234567892', '1234567890', '1234567891']);
   });
 
+  test('keeps bookmarks another run added to the pending file mid-fetch', async () => {
+    process.env.FAKE_BIRD_PENDING_FILE = config.pendingFile;
+    try {
+      await fetchOnce();
+    } finally {
+      delete process.env.FAKE_BIRD_PENDING_FILE;
+    }
+    assert.ok(readPending().bookmarks.some(b => b.id === '5555555555'));
+  });
+
   test('a pending file without a bookmarks array is treated as empty', async () => {
     setup('empty-pending.json');
     const result = await fetchOnce();
     assert.strictEqual(result.count, 2);
     assert.deepStrictEqual(readPending().bookmarks.map(b => b.id), ['1234567890', '1234567891']);
+  });
+});
+
+describe('smaug fetch arguments', () => {
+  // Runs the CLI in a fresh directory and returns the bird calls it made
+  function birdCalls(...args) {
+    setup();
+    fs.renameSync(path.join(dir, 'config.json'), path.join(dir, 'smaug.config.json'));
+    const log = path.join(dir, 'bird.log');
+    execFileSync(process.execPath, [path.join(testDir, '../src/cli.js'), 'fetch', ...args], {
+      cwd: dir,
+      env: { ...process.env, FAKE_BIRD_LOG: log },
+      stdio: 'ignore'
+    });
+    return fs.readFileSync(log, 'utf8').trim().split('\n').map(l => JSON.parse(l)).filter(a => a[0] !== 'read');
+  }
+
+  test('--max-pages does not set the fetch count', () => {
+    assert.deepStrictEqual(birdCalls('--source', 'both', '--all', '--max-pages', '3'), [
+      ['bookmarks', '--all', '--max-pages', '3', '--json'],
+      ['likes', '-n', '20', '--json']
+    ]);
+  });
+
+  test('a bare number sets the count, before or after --max-pages', () => {
+    assert.deepStrictEqual(birdCalls('30', '--max-pages', '3'), [['bookmarks', '-n', '30', '--json']]);
+    assert.deepStrictEqual(birdCalls('--max-pages', '3', '30'), [['bookmarks', '-n', '30', '--json']]);
   });
 });

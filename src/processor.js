@@ -428,13 +428,13 @@ export async function fetchAndPrepareBookmarks(options = {}) {
 
   // Get IDs already processed or pending
   const existingIds = getExistingBookmarkIds(config);
-  let existingPending = [];
+  let pendingIds = new Set();
   try {
     if (fs.existsSync(config.pendingFile)) {
-      existingPending = JSON.parse(fs.readFileSync(config.pendingFile, 'utf8')).bookmarks || [];
+      const pending = JSON.parse(fs.readFileSync(config.pendingFile, 'utf8'));
+      pendingIds = new Set((pending.bookmarks || []).map(b => b.id.toString()));
     }
   } catch (e) {}
-  const pendingIds = new Set(existingPending.map(b => b.id.toString()));
 
   // Determine which tweets to process
   let toProcess;
@@ -575,11 +575,20 @@ export async function fetchAndPrepareBookmarks(options = {}) {
   }
 
   // Merge prepared bookmarks into pending file
-  const newBookmarks = prepared.filter(b => !pendingIds.has(b.id.toString()));
+  let existingPending = { bookmarks: [] };
+  try {
+    if (fs.existsSync(config.pendingFile)) {
+      const parsed = JSON.parse(fs.readFileSync(config.pendingFile, 'utf8'));
+      existingPending = { bookmarks: parsed.bookmarks || [], ...parsed };
+    }
+  } catch (e) {}
+
+  const existingPendingIds = new Set(existingPending.bookmarks.map(b => b.id));
+  const newBookmarks = prepared.filter(b => !existingPendingIds.has(b.id));
 
   // Merge and sort by createdAt ascending (oldest first)
   // This ensures when processed, oldest get added first, newest end up on top
-  const allBookmarks = [...existingPending, ...newBookmarks];
+  const allBookmarks = [...existingPending.bookmarks, ...newBookmarks];
   allBookmarks.sort((a, b) => {
     const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
     const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;

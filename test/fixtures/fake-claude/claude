@@ -1,0 +1,7 @@
+#!/bin/sh
+# Stands in for the claude CLI in tests: records its arguments in
+# $FAKE_CLAUDE_LOG, prints a stream-json result event and exits with
+# $FAKE_CLAUDE_EXIT (default 0).
+printf '%s\n' "$@" > "$FAKE_CLAUDE_LOG"
+echo '{"type":"result","usage":{"input_tokens":10,"output_tokens":20}}'
+exit "${FAKE_CLAUDE_EXIT:-0}"

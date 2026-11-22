@@ -2,6 +2,7 @@
 // Stands in for the bird CLI in tests: answers `bookmarks`, `likes` and `read`
 // with fixture tweets the way `bird ... --json` prints them. When FAKE_BIRD_LOG
 // is set, each call's arguments are appended to that file as one JSON line.
+// FAKE_BIRD_BOOKMARKS names another fixture file for `bookmarks` to print.
 // When FAKE_BIRD_PENDING_FILE is set, `read` also adds bookmark 5555555555 to
 // that pending file, standing in for another run changing it mid-fetch.
 import fs from 'fs';
@@ -13,7 +14,8 @@ if (process.env.FAKE_BIRD_LOG) {
 
 const [command, id] = args;
 if (command === 'bookmarks') {
-  process.stdout.write(fs.readFileSync(new URL('./sample-bookmarks.json', import.meta.url), 'utf8'));
+  const fixture = process.env.FAKE_BIRD_BOOKMARKS || 'sample-bookmarks.json';
+  process.stdout.write(fs.readFileSync(new URL(`./${fixture}`, import.meta.url), 'utf8'));
 } else if (command === 'likes') {
   process.stdout.write('[]');
 } else if (command === 'read') {

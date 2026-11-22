@@ -10,6 +10,11 @@ import { fetchAndPrepareBookmarks } from '../src/processor.js';
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const fixtures = path.join(testDir, 'fixtures');
 
+// Config the environment would otherwise override (see loadConfig)
+for (const name of ['ARCHIVE_FILE', 'PENDING_FILE', 'STATE_FILE', 'TIMEZONE', 'BIRD_PATH', 'SOURCE', 'INCLUDE_MEDIA']) {
+  delete process.env[name];
+}
+
 // Runs fetchAndPrepareBookmarks against the fake bird CLI in a fresh directory
 // holding an archive with one bookmark already filed and the given pending file.
 let dir;
@@ -91,6 +96,48 @@ describe('fetchAndPrepareBookmarks', () => {
       delete process.env.FAKE_BIRD_PENDING_FILE;
     }
     assert.ok(readPending().bookmarks.some(b => b.id === '5555555555'));
+  });
+
+  test('expands, types and fetches each link', async () => {
+    const pages = {
+      'https://t.co/repo': { url: 'https://github.com/owner/repo' },
+      'https://t.co/quote': { url: 'https://x.com/someone/status/3333333333' },
+      'https://t.co/flix': { url: 'https://www.netflix.com/title/1' },
+      'https://api.github.com/repos/owner/repo': {
+        ok: true,
+        json: async () => ({ name: 'repo', full_name: 'owner/repo', stargazers_count: 5, html_url: 'https://github.com/owner/repo' })
+      },
+      'https://api.github.com/repos/owner/repo/readme': { ok: false, status: 404, json: async () => ({}) },
+      'https://www.netflix.com/title/1': { ok: true, text: async () => 'film page '.repeat(200) }
+    };
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async (url) => pages[url];
+    process.env.FAKE_BIRD_BOOKMARKS = 'link-bookmarks.json';
+    try {
+      await fetchOnce();
+    } finally {
+      globalThis.fetch = realFetch;
+      delete process.env.FAKE_BIRD_BOOKMARKS;
+    }
+
+    const links = readPending().bookmarks.find(b => b.id === '1234567893').links;
+    assert.deepStrictEqual(links.map(l => [l.original, l.expanded, l.type]), [
+      ['https://t.co/repo', 'https://github.com/owner/repo', 'github'],
+      ['https://t.co/quote', 'https://x.com/someone/status/3333333333', 'tweet'],
+      ['https://t.co/flix', 'https://www.netflix.com/title/1', 'article']
+    ]);
+    assert.strictEqual(links[0].content.fullName, 'owner/repo');
+    assert.strictEqual(links[0].content.source, 'github-api');
+    assert.deepStrictEqual(links[1].content, {
+      id: '3333333333',
+      author: 'parentuser',
+      authorName: 'Parent User',
+      text: 'Parent tweet text',
+      tweetUrl: 'https://x.com/parentuser/status/3333333333',
+      source: 'quote-tweet'
+    });
+    assert.strictEqual(links[2].content.source, 'direct');
+    assert.ok(links[2].content.text.startsWith('film page'));
   });
 
   test('a pending file without a bookmarks array is treated as empty', async () => {

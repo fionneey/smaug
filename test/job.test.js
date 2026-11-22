@@ -23,11 +23,12 @@ function runJob(claudeExit) {
       HOME: dir,
       TMPDIR: dir,
       FAKE_CLAUDE_LOG: path.join(dir, 'claude-args.txt'),
+      FAKE_CLAUDE_QUEUE: pendingFile,
       FAKE_CLAUDE_EXIT: String(claudeExit)
     }
   });
-  const pending = JSON.parse(fs.readFileSync(pendingFile, 'utf8'));
-  return { status: result.status, ids: pending.bookmarks.map(b => b.id) };
+  const ids = (file) => JSON.parse(fs.readFileSync(file, 'utf8')).bookmarks.map(b => b.id);
+  return { status: result.status, seen: ids(path.join(dir, 'claude-args.txt.queue')), ids: ids(pendingFile) };
 }
 
 describe('smaug run', () => {
@@ -46,8 +47,9 @@ describe('smaug run', () => {
   });
 
   test('points Claude at the configured pending file and removes what it processed', () => {
-    const { status, ids } = runJob(0);
+    const { status, seen, ids } = runJob(0);
     assert.strictEqual(status, 0);
+    assert.deepStrictEqual(seen, ['1', '2']);
     assert.deepStrictEqual(ids, ['3']);
     assert.ok(!fs.existsSync(pendingFile + '.full'));
     const prompt = fs.readFileSync(path.join(dir, 'claude-args.txt'), 'utf8').trim().split('\n').pop();
@@ -55,8 +57,9 @@ describe('smaug run', () => {
   });
 
   test('restores the whole queue when Claude fails', () => {
-    const { status, ids } = runJob(1);
+    const { status, seen, ids } = runJob(1);
     assert.strictEqual(status, 1);
+    assert.deepStrictEqual(seen, ['1', '2']);
     assert.deepStrictEqual(ids, ['1', '2', '3']);
     assert.ok(!fs.existsSync(pendingFile + '.full'));
   });

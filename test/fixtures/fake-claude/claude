@@ -1,7 +1,9 @@
 #!/bin/sh
 # Stands in for the claude CLI in tests: records its arguments in
-# $FAKE_CLAUDE_LOG, prints a stream-json result event and exits with
-# $FAKE_CLAUDE_EXIT (default 0).
+# $FAKE_CLAUDE_LOG and a copy of the queue file $FAKE_CLAUDE_QUEUE as it
+# stood when called in $FAKE_CLAUDE_LOG.queue, prints a stream-json result
+# event and exits with $FAKE_CLAUDE_EXIT (default 0).
 printf '%s\n' "$@" > "$FAKE_CLAUDE_LOG"
+cp "$FAKE_CLAUDE_QUEUE" "$FAKE_CLAUDE_LOG.queue"
 echo '{"type":"result","usage":{"input_tokens":10,"output_tokens":20}}'
 exit "${FAKE_CLAUDE_EXIT:-0}"

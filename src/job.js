@@ -7,8 +7,7 @@
  *
  * Can be used with:
  * - Cron: "0,30 * * * *" (every 30 min) - node /path/to/smaug/src/job.js
- * - Bree: Import and add to your Bree jobs array
- * - systemd timers: See README for setup
+ * - Bree: see examples/bree-scheduler.js
  * - Any other scheduler
  */
 
@@ -126,6 +125,9 @@ async function invokeClaudeCode(config, bookmarkCount, options = {}) {
 
   await showDragonReveal(bookmarkCount);
 
+  const pendingFile = path.resolve(config.pendingFile);
+  const pendingName = path.basename(pendingFile);
+
   return new Promise((resolve) => {
     const args = [
       '--print',
@@ -134,7 +136,7 @@ async function invokeClaudeCode(config, bookmarkCount, options = {}) {
       '--model', model,
       '--allowedTools', allowedTools,
       '--',
-      `Process the ${bookmarkCount} bookmark(s) in ./.state/pending-bookmarks.json following the instructions in ./.claude/commands/process-bookmarks.md. Read that file first, then process each bookmark.`
+      `Process the ${bookmarkCount} bookmark(s) in ${pendingFile} following the instructions in ./.claude/commands/process-bookmarks.md. Read that file first, then process each bookmark.`
     ];
 
     // Ensure PATH includes common node locations for the claude shebang
@@ -172,7 +174,6 @@ async function invokeClaudeCode(config, bookmarkCount, options = {}) {
     let stdout = '';
     let stderr = '';
     let lastText = '';
-    let filesWritten = [];
     let bookmarksProcessed = 0;
     let totalBookmarks = bookmarkCount;
 
@@ -255,7 +256,6 @@ async function invokeClaudeCode(config, bookmarkCount, options = {}) {
     ];
     let fireFrame = 0;
     let spinnerMsgFrame = 0;
-    let lastSpinnerLine = '';
     let spinnerActive = true;
     let currentSpinnerMsg = spinnerMessages[0];
 
@@ -270,15 +270,13 @@ async function invokeClaudeCode(config, bookmarkCount, options = {}) {
       if (!spinnerActive) return;
       fireFrame = (fireFrame + 1) % fireFrames.length;
       const flame = fireFrames[fireFrame];
-      const spinnerLine = `\r  ${flame} ${currentSpinnerMsg}... [${elapsed()}]`;
-      process.stdout.write(spinnerLine + '          '); // Extra spaces to clear previous longer messages
-      lastSpinnerLine = spinnerLine;
+      // Extra spaces clear previous longer messages
+      process.stdout.write(`\r  ${flame} ${currentSpinnerMsg}... [${elapsed()}]          `);
     }, 150);
 
     // Start the spinner with a patience message
     process.stdout.write('\n  ⏳ Dragons are patient hunters... this may take a moment.\n');
-    lastSpinnerLine = '  🔥     Processing...';
-    process.stdout.write(lastSpinnerLine);
+    process.stdout.write('  🔥     Processing...');
 
     // Helper to clear spinner and print a status line
     const printStatus = (msg) => {
@@ -341,7 +339,6 @@ async function invokeClaudeCode(config, bookmarkCount, options = {}) {
                   const fileName = input.file_path.split('/').pop();
                   const dir = input.file_path.includes('/knowledge/tools/') ? 'tools' :
                              input.file_path.includes('/knowledge/articles/') ? 'articles' : '';
-                  filesWritten.push(fileName);
                   if (dir) {
                     printStatus(`    💎 Hoarded → ${dir}/${fileName}\n`);
                   } else if (fileName === 'bookmarks.md') {
@@ -357,12 +354,12 @@ async function invokeClaudeCode(config, bookmarkCount, options = {}) {
                     bookmarksProcessed++;
                     const fireIntensity = '🔥'.repeat(Math.min(Math.ceil(bookmarksProcessed / 2), 5));
                     printStatus(`  ${fireIntensity} ${progressBar(bookmarksProcessed, totalBookmarks)} [${elapsed()}]`);
-                  } else if (fileName === 'pending-bookmarks.json') {
+                  } else if (fileName === pendingName) {
                     printStatus(`  🐉 *licks claws clean* Tidying the lair...\n`);
                   }
                 } else if (toolName === 'Read' && input.file_path) {
                   const fileName = input.file_path.split('/').pop();
-                  if (fileName === 'pending-bookmarks.json' && !shownMessages.has('eye')) {
+                  if (fileName === pendingName && !shownMessages.has('eye')) {
                     shownMessages.add('eye');
                     printStatus(`  👁️  The dragon's eye opens... surveying treasures...\n`);
                   } else if (fileName === 'process-bookmarks.md' && !shownMessages.has('scrolls')) {
@@ -695,9 +692,7 @@ export async function run(options = {}) {
           pendingData.bookmarks = pendingData.bookmarks.slice(0, limit);
           bookmarkCount = limit;
           // Write limited subset back (temporarily)
-          fs.writeFileSync(config.pendingFile + '.full', JSON.stringify(
-            JSON.parse(fs.readFileSync(config.pendingFile, 'utf8')), null, 2
-          ));
+          fs.copyFileSync(config.pendingFile, config.pendingFile + '.full');
           pendingData.count = bookmarkCount;
           fs.writeFileSync(config.pendingFile, JSON.stringify(pendingData, null, 2));
         }

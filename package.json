@@ -11,7 +11,7 @@
     "fetch": "node src/cli.js fetch",
     "process": "node src/cli.js process",
     "start": "node src/cli.js",
-    "test": "node --test"
+    "test": "node --test test/*.test.js"
   },
   "keywords": [
     "twitter",
@@ -26,7 +26,6 @@
   "dependencies": {
     "dayjs": "^1.11.10"
   },
-  "devDependencies": {},
   "engines": {
     "node": ">=20"
   }

@@ -1,18 +1,33 @@
 [
   {
+    "id": "1234567891",
+    "text": "Replying with a great point",
+    "author": {
+      "username": "aiwriter",
+      "name": "AI Writer"
+    },
+    "createdAt": "2025-12-16T14:00:00Z",
+    "inReplyToStatusId": "1111111111"
+  },
+  {
     "id": "1234567890",
-    "text": "Check out this cool tool https://t.co/abc123",
+    "text": "Check out this cool tool",
     "author": {
       "username": "testuser"
     },
-    "createdAt": "2025-12-15T10:30:00Z"
+    "createdAt": "2025-12-15T10:30:00Z",
+    "quotedTweet": {
+      "id": "2222222222",
+      "text": "The quoted tweet",
+      "author": { "username": "quoted", "name": "Quoted Person" }
+    }
   },
   {
-    "id": "1234567891",
-    "text": "Great article on AI https://t.co/def456",
+    "id": "1234567892",
+    "text": "Already in the archive",
     "author": {
-      "username": "aiwriter"
+      "username": "archived"
     },
-    "createdAt": "2025-12-16T14:00:00Z"
+    "createdAt": "2025-12-14T09:00:00Z"
   }
 ]

@@ -1,11 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { isPaywalled, stripQuerystring } from '../src/processor.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { classifyLink, fetchContent, isPaywalled, stripQuerystring } from '../src/processor.js';
 
 describe('isPaywalled', () => {
   test('detects NYT as paywalled', () => {
@@ -26,6 +21,12 @@ describe('isPaywalled', () => {
 
   test('returns false for Twitter', () => {
     assert.strictEqual(isPaywalled('https://twitter.com/user/status/123'), false);
+  });
+
+  test('matches the host, not a substring of it', () => {
+    assert.strictEqual(isPaywalled('https://www.microsoft.com/blog'), false);
+    assert.strictEqual(isPaywalled('https://example.com/?ref=nytimes.com'), false);
+    assert.strictEqual(isPaywalled('https://www.ft.com/content/abc'), true);
   });
 });
 
@@ -51,53 +52,71 @@ describe('stripQuerystring', () => {
   });
 });
 
-describe('pending file handling', () => {
-  test('fixture file with bookmarks array loads correctly', () => {
-    const fixture = JSON.parse(
-      fs.readFileSync(path.join(__dirname, 'fixtures/pending-bookmarks.json'), 'utf8')
-    );
-    assert.ok(Array.isArray(fixture.bookmarks));
-    assert.strictEqual(fixture.bookmarks.length, 1);
+describe('classifyLink', () => {
+  test('types links by their host', () => {
+    assert.strictEqual(classifyLink('https://github.com/user/repo'), 'github');
+    assert.strictEqual(classifyLink('https://youtu.be/abc'), 'video');
+    assert.strictEqual(classifyLink('https://x.com/user/status/123'), 'tweet');
+    assert.strictEqual(classifyLink('https://x.com/user/status/123/photo/1'), 'media');
+    assert.strictEqual(classifyLink('https://example.com/cat.png'), 'image');
+    assert.strictEqual(classifyLink('https://example.com/post'), 'article');
   });
 
-  test('fixture file without bookmarks array handled with fallback', () => {
-    const fixture = JSON.parse(
-      fs.readFileSync(path.join(__dirname, 'fixtures/empty-pending.json'), 'utf8')
-    );
-    // This tests the pattern: (fixture.bookmarks || [])
-    const bookmarks = fixture.bookmarks || [];
-    assert.ok(Array.isArray(bookmarks));
-    assert.strictEqual(bookmarks.length, 0);
-  });
-
-  test('null-safe bookmark ID extraction', () => {
-    const fixture = JSON.parse(
-      fs.readFileSync(path.join(__dirname, 'fixtures/empty-pending.json'), 'utf8')
-    );
-    // Pattern from processor.js line 394
-    const pendingIds = new Set((fixture.bookmarks || []).map(b => b.id.toString()));
-    assert.strictEqual(pendingIds.size, 0);
+  test('does not mistake hosts that merely contain x.com for tweets', () => {
+    assert.strictEqual(classifyLink('https://www.netflix.com/title/1'), 'article');
+    assert.strictEqual(classifyLink('https://www.dropbox.com/s/file'), 'article');
   });
 });
 
-describe('sample bookmarks fixture', () => {
-  test('loads sample bookmarks', () => {
-    const bookmarks = JSON.parse(
-      fs.readFileSync(path.join(__dirname, 'fixtures/sample-bookmarks.json'), 'utf8')
-    );
-    assert.strictEqual(bookmarks.length, 2);
-    assert.strictEqual(bookmarks[0].author.username, 'testuser');
-  });
-
-  test('bookmarks have required fields', () => {
-    const bookmarks = JSON.parse(
-      fs.readFileSync(path.join(__dirname, 'fixtures/sample-bookmarks.json'), 'utf8')
-    );
-    for (const bookmark of bookmarks) {
-      assert.ok(bookmark.id, 'bookmark should have id');
-      assert.ok(bookmark.text, 'bookmark should have text');
-      assert.ok(bookmark.author, 'bookmark should have author');
-      assert.ok(bookmark.createdAt, 'bookmark should have createdAt');
+describe('fetchContent for GitHub links', () => {
+  // Replaces fetch with one that answers each URL from the given table
+  async function withFetch(responses, fn) {
+    const realFetch = globalThis.fetch;
+    const calls = [];
+    globalThis.fetch = async (url) => {
+      calls.push(url);
+      return responses[url];
+    };
+    try {
+      return { result: await fn(), calls };
+    } finally {
+      globalThis.fetch = realFetch;
     }
+  }
+  const page = { ok: true, text: async () => 'page content '.repeat(100) };
+
+  for (const status of [403, 404]) {
+    test(`falls back to the page when the API answers ${status}`, async () => {
+      const { result, calls } = await withFetch({
+        'https://api.github.com/repos/owner/repo': { ok: false, status },
+        'https://github.com/owner/repo': page
+      }, () => fetchContent('https://github.com/owner/repo', 'github'));
+      assert.strictEqual(result.source, 'direct');
+      assert.deepStrictEqual(calls, ['https://api.github.com/repos/owner/repo', 'https://github.com/owner/repo']);
+    });
+  }
+
+  test('returns repo metadata and README when the API answers', async () => {
+    const { result } = await withFetch({
+      'https://api.github.com/repos/owner/repo': {
+        ok: true,
+        json: async () => ({ name: 'repo', full_name: 'owner/repo', stargazers_count: 5, html_url: 'https://github.com/owner/repo' })
+      },
+      'https://api.github.com/repos/owner/repo/readme': {
+        ok: true,
+        json: async () => ({ content: Buffer.from('# Readme').toString('base64') })
+      }
+    }, () => fetchContent('https://github.com/owner/repo', 'github'));
+    assert.deepStrictEqual(result, {
+      name: 'repo',
+      fullName: 'owner/repo',
+      description: '',
+      stars: 5,
+      language: undefined,
+      topics: [],
+      readme: '# Readme',
+      url: 'https://github.com/owner/repo',
+      source: 'github-api'
+    });
   });
 });

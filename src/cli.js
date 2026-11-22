@@ -14,11 +14,10 @@
 
 import { fetchAndPrepareBookmarks } from './processor.js';
 import { initConfig, loadConfig } from './config.js';
+import { run } from './job.js';
 import { execSync } from 'child_process';
 import fs from 'fs';
-import path from 'path';
 import readline from 'readline';
-import { fileURLToPath, pathToFileURL } from 'url';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -208,7 +207,6 @@ async function main() {
 
     case 'run': {
       // Run the full job (same as node src/job.js)
-      const jobPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'job.js');
       const trackTokens = args.includes('--track-tokens') || args.includes('-t');
 
       // Parse --limit flag
@@ -222,19 +220,14 @@ async function main() {
         }
       }
 
-      try {
-        const jobModule = await import(pathToFileURL(jobPath).href);
-        const result = await jobModule.default.run({ trackTokens, limit });
-        process.exit(result.success ? 0 : 1);
-      } catch (err) {
-        console.error('Failed to run job:', err.message);
-        process.exit(1);
-      }
-      break;
+      const result = await run({ trackTokens, limit });
+      process.exit(result.success ? 0 : 1);
     }
 
     case 'fetch': {
-      const count = parseInt(args.find(a => a.match(/^\d+$/)) || '20', 10);
+      // The count is the first bare number that is not the value of --max-pages
+      const maxPagesValueIdx = args.indexOf('--max-pages') + 1;
+      const count = parseInt(args.find((a, i) => /^\d+$/.test(a) && i !== maxPagesValueIdx) || '20', 10);
       const specificIds = args.filter(a => a.match(/^\d{10,}$/));
       const force = args.includes('--force') || args.includes('-f');
       const includeMedia = args.includes('--media') || args.includes('-m');

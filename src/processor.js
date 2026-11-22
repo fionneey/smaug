@@ -10,7 +10,7 @@
  * Outputs a JSON bundle for AI analysis (Claude Code, etc.)
  */
 
-import { execSync, spawn } from 'child_process';
+import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -236,8 +236,41 @@ export async function expandTcoLink(url, timeout = 10000) {
   }
 }
 
+// True when the URL's host is the domain or one of its subdomains
+function hostIs(url, domain) {
+  try {
+    const host = new URL(url).hostname;
+    return host === domain || host.endsWith(`.${domain}`);
+  } catch {
+    return false;
+  }
+}
+
 export function isPaywalled(url) {
-  return PAYWALL_DOMAINS.some(domain => url.includes(domain));
+  return PAYWALL_DOMAINS.some(domain => hostIs(url, domain));
+}
+
+export function classifyLink(url) {
+  if (hostIs(url, 'github.com')) return 'github';
+  if (hostIs(url, 'youtube.com') || hostIs(url, 'youtu.be')) return 'video';
+  if (hostIs(url, 'x.com') || hostIs(url, 'twitter.com')) {
+    return url.includes('/photo/') || url.includes('/video/') ? 'media' : 'tweet';
+  }
+  if (/\.(jpg|jpeg|png|gif|webp)$/i.test(url)) return 'image';
+  return 'article';
+}
+
+// Context Claude gets for a quoted or parent tweet
+function tweetContext(tweet, source) {
+  const author = tweet.author?.username || 'unknown';
+  return {
+    id: tweet.id,
+    author,
+    authorName: tweet.author?.name || author,
+    text: tweet.text || tweet.full_text || '',
+    tweetUrl: `https://x.com/${author}/status/${tweet.id}`,
+    ...(source && { source })
+  };
 }
 
 export function stripQuerystring(url) {
@@ -249,93 +282,81 @@ export function stripQuerystring(url) {
   }
 }
 
-function extractGitHubInfo(url) {
-  const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
-  if (!match) return null;
-  return { owner: match[1], repo: match[2].replace(/\.git$/, '') };
-}
-
 export async function fetchGitHubContent(url) {
-  const info = extractGitHubInfo(url);
-  if (!info) {
+  const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+  if (!match) {
     throw new Error('Could not parse GitHub URL');
   }
+  const owner = match[1];
+  const repo = match[2].replace(/\.git$/, '');
 
-  const { owner, repo } = info;
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
+  const repoResponse = await fetch(apiUrl, {
+    headers: { 'Accept': 'application/vnd.github.v3+json' }
+  });
+  if (!repoResponse.ok) {
+    throw new Error(`GitHub API ${repoResponse.status} for ${owner}/${repo}`);
+  }
+  const repoJson = await repoResponse.json();
 
+  // Fetch README content
+  let readme = '';
   try {
-    const apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
-    const repoResponse = await fetch(apiUrl, {
+    const readmeUrl = `https://api.github.com/repos/${owner}/${repo}/readme`;
+    const readmeResponse = await fetch(readmeUrl, {
       headers: { 'Accept': 'application/vnd.github.v3+json' }
     });
-    const repoJson = await repoResponse.json();
-
-    // Fetch README content
-    let readme = '';
-    try {
-      const readmeUrl = `https://api.github.com/repos/${owner}/${repo}/readme`;
-      const readmeResponse = await fetch(readmeUrl, {
-        headers: { 'Accept': 'application/vnd.github.v3+json' }
-      });
-      const readmeJson = await readmeResponse.json();
-      if (readmeJson.content) {
-        readme = Buffer.from(readmeJson.content, 'base64').toString('utf8');
-        if (readme.length > 5000) {
-          readme = readme.slice(0, 5000) + '\n...[truncated]';
-        }
+    const readmeJson = await readmeResponse.json();
+    if (readmeJson.content) {
+      readme = Buffer.from(readmeJson.content, 'base64').toString('utf8');
+      if (readme.length > 5000) {
+        readme = readme.slice(0, 5000) + '\n...[truncated]';
       }
-    } catch (e) {
-      console.log(`  No README found for ${owner}/${repo}`);
     }
-
-    return {
-      name: repoJson.name,
-      fullName: repoJson.full_name,
-      description: repoJson.description || '',
-      stars: repoJson.stargazers_count,
-      language: repoJson.language,
-      topics: repoJson.topics || [],
-      readme,
-      url: repoJson.html_url
-    };
-  } catch (error) {
-    console.error(`  GitHub API error for ${owner}/${repo}: ${error.message}`);
-    throw error;
+  } catch (e) {
+    console.log(`  No README found for ${owner}/${repo}`);
   }
+
+  return {
+    name: repoJson.name,
+    fullName: repoJson.full_name,
+    description: repoJson.description || '',
+    stars: repoJson.stargazers_count,
+    language: repoJson.language,
+    topics: repoJson.topics || [],
+    readme,
+    url: repoJson.html_url
+  };
 }
 
 export async function fetchArticleContent(url) {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
 
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-      },
-      signal: controller.signal,
-      redirect: 'follow'
-    });
-    clearTimeout(timeout);
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+    },
+    signal: controller.signal,
+    redirect: 'follow'
+  });
+  clearTimeout(timeout);
 
-    const text = await response.text();
-    // Limit to 50KB like the old curl | head -c 50000
-    const result = text.slice(0, 50000);
+  const text = await response.text();
+  // Limit to 50KB like the old curl | head -c 50000
+  const result = text.slice(0, 50000);
 
-    // Check for paywall indicators
-    if (result.includes('Subscribe') && result.includes('sign in') ||
-        result.includes('This article is for subscribers') ||
-        result.length < 1000) {
-      return { text: result, source: 'direct', paywalled: true };
-    }
-
-    return { text: result, source: 'direct', paywalled: false };
-  } catch (error) {
-    throw error;
+  // Check for paywall indicators
+  if (result.includes('Subscribe') && result.includes('sign in') ||
+      result.includes('This article is for subscribers') ||
+      result.length < 1000) {
+    return { text: result, source: 'direct', paywalled: true };
   }
+
+  return { text: result, source: 'direct', paywalled: false };
 }
 
-export async function fetchContent(url, type, config) {
+export async function fetchContent(url, type) {
   // Use GitHub API for GitHub URLs
   if (type === 'github') {
     try {
@@ -461,60 +482,27 @@ export async function fetchAndPrepareBookmarks(options = {}) {
         const expanded = await expandTcoLink(link);
         console.log(`  Expanded: ${link} -> ${expanded}`);
 
-        // Categorize the link
-        let type = 'unknown';
+        const type = classifyLink(expanded);
         let content = null;
 
-        if (expanded.includes('github.com')) {
-          type = 'github';
-        } else if (expanded.includes('youtube.com') || expanded.includes('youtu.be')) {
-          type = 'video';
-        } else if (expanded.includes('x.com') || expanded.includes('twitter.com')) {
-          if (expanded.includes('/photo/') || expanded.includes('/video/')) {
-            type = 'media';
-          } else {
-            type = 'tweet';
-            // Quote tweet - fetch the quoted tweet for context
-            const tweetIdMatch = expanded.match(/status\/(\d+)/);
-            if (tweetIdMatch) {
-              const quotedTweetId = tweetIdMatch[1];
-              console.log(`  Quote tweet detected, fetching ${quotedTweetId}...`);
-              const quotedTweet = fetchTweet(config, quotedTweetId);
-              if (quotedTweet) {
-                content = {
-                  id: quotedTweet.id,
-                  author: quotedTweet.author?.username || 'unknown',
-                  authorName: quotedTweet.author?.name || quotedTweet.author?.username || 'unknown',
-                  text: quotedTweet.text || quotedTweet.full_text || '',
-                  tweetUrl: `https://x.com/${quotedTweet.author?.username || 'unknown'}/status/${quotedTweet.id}`,
-                  source: 'quote-tweet'
-                };
-              }
-            }
+        // Quote tweet - fetch the quoted tweet for context
+        const tweetIdMatch = type === 'tweet' && expanded.match(/status\/(\d+)/);
+        if (tweetIdMatch) {
+          const quotedTweetId = tweetIdMatch[1];
+          console.log(`  Quote tweet detected, fetching ${quotedTweetId}...`);
+          const quotedTweet = fetchTweet(config, quotedTweetId);
+          if (quotedTweet) {
+            content = tweetContext(quotedTweet, 'quote-tweet');
           }
-        } else if (expanded.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-          type = 'image';
-        } else {
-          type = 'article';
         }
 
         // Fetch content for articles and GitHub repos
         if (type === 'article' || type === 'github') {
           try {
-            const fetchResult = await fetchContent(expanded, type, config);
+            const fetchResult = await fetchContent(expanded, type);
 
             if (fetchResult.source === 'github-api') {
-              content = {
-                name: fetchResult.name,
-                fullName: fetchResult.fullName,
-                description: fetchResult.description,
-                stars: fetchResult.stars,
-                language: fetchResult.language,
-                topics: fetchResult.topics,
-                readme: fetchResult.readme,
-                url: fetchResult.url,
-                source: 'github-api'
-              };
+              content = fetchResult;
               console.log(`  GitHub repo: ${fetchResult.fullName} (${fetchResult.stars} stars)`);
             } else {
               content = {
@@ -543,29 +531,12 @@ export async function fetchAndPrepareBookmarks(options = {}) {
         console.log(`  This is a reply to ${bookmark.inReplyToStatusId}, fetching parent...`);
         const parentTweet = fetchTweet(config, bookmark.inReplyToStatusId);
         if (parentTweet) {
-          replyContext = {
-            id: parentTweet.id,
-            author: parentTweet.author?.username || 'unknown',
-            authorName: parentTweet.author?.name || parentTweet.author?.username || 'unknown',
-            text: parentTweet.text || parentTweet.full_text || '',
-            tweetUrl: `https://x.com/${parentTweet.author?.username || 'unknown'}/status/${parentTweet.id}`
-          };
+          replyContext = tweetContext(parentTweet);
         }
       }
 
       // Check for native quote tweet
-      let quoteContext = null;
-      if (bookmark.quotedTweet) {
-        const qt = bookmark.quotedTweet;
-        quoteContext = {
-          id: qt.id,
-          author: qt.author?.username || 'unknown',
-          authorName: qt.author?.name || qt.author?.username || 'unknown',
-          text: qt.text || '',
-          tweetUrl: `https://x.com/${qt.author?.username || 'unknown'}/status/${qt.id}`,
-          source: 'native-quote'
-        };
-      }
+      const quoteContext = bookmark.quotedTweet ? tweetContext(bookmark.quotedTweet, 'native-quote') : null;
 
       // Capture media attachments (photos, videos, GIFs) - EXPERIMENTAL
       // Only included if includeMedia is true (--media flag)

@@ -2,9 +2,8 @@
  * Configuration loader for bookmark archiver
  *
  * Supports:
- * - Config file (bookmarks-archiver.config.json)
+ * - Config file (the given path, ./smaug.config.json, ~/.smaug.json or ~/.config/smaug/config.json)
  * - Environment variables
- * - CLI arguments
  */
 
 import fs from 'fs';

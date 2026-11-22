@@ -7,10 +7,11 @@ Archive your Twitter/X bookmarks (and/or optionally, likes) to markdown. Automat
 ## Contents
 
 - [Quick Start](#quick-start-5-minutes)
-- [Getting Twitter Credentials](#getting-twitter-credentials)
-- [What It Does](#what-it-does)
-- [Running](#running)
+- [Getting Twitter Credentials](#manually-getting-twitter-credentials)
+- [What It Does](#what-smaug-actually-does)
+- [Running](#running-manually)
 - [Categories](#categories)
+- [Bookmark Folders](#bookmark-folders)
 - [Automation](#automation)
 - [Output](#output)
 - [Configuration](#configuration)
@@ -98,7 +99,7 @@ npx smaug run
 # Fetch from bookmarks (default)
 npx smaug fetch 20
 
-# Fetch ALL bookmarks (paginated - requires bird CLI from git)
+# Fetch ALL bookmarks (paginated - requires bird CLI v0.6.0+)
 npx smaug fetch --all
 npx smaug fetch --all --max-pages 5  # Limit to 5 pages
 
@@ -108,14 +109,14 @@ npx smaug fetch --source likes
 # Fetch from both bookmarks AND likes
 npx smaug fetch --source both
 
-# Process already-fetched tweets
+# List already-fetched tweets waiting to be processed
 npx smaug process
 
-# Force re-process (ignore duplicates)
-npx smaug process --force
+# Re-fetch tweets even if already archived
+npx smaug fetch --force
 
 # Check what's pending
-node -e "console.log(require('./.state/pending-bookmarks.json').count)"
+npx smaug status
 ```
 
 ### Fetching All Bookmarks
@@ -127,7 +128,7 @@ npx smaug fetch --all              # Fetch all (up to 10 pages)
 npx smaug fetch --all --max-pages 20  # Fetch up to 20 pages
 ```
 
-**Note:** This requires bird CLI built from git (not the npm release). See [Troubleshooting](#troubleshooting) for installation instructions.
+**Note:** This requires bird CLI v0.6.0 or newer. See [Troubleshooting](#only-50-70-bookmarks-fetched) to update it.
 
 **Cost warning:** Processing large bookmark backlogs can consume significant Claude tokens. Each bookmark with content-heavy links (long articles, GitHub READMEs, etc.) adds to the context. Process in batches to control costs:
 
@@ -145,8 +146,11 @@ Categories define how different bookmark types are handled. Smaug comes with sen
 
 | Category | Matches | Action | Destination |
 |----------|---------|--------|-------------|
-| **article** | blogs, news sites, papers, medium.com, substack, etc | file | `./knowledge/articles/` |
+| **article** | medium.com, substack.com, dev.to, "blog", "article" | file | `./knowledge/articles/` |
 | **github** | github.com | file | `./knowledge/tools/` |
+| **podcast** | podcasts.apple.com, spotify.com/episode, overcast.fm, pocketcasts.com, castro.fm | transcribe | `./knowledge/podcasts/` |
+| **youtube** | youtube.com, youtu.be | transcribe | `./knowledge/videos/` |
+| **video** | vimeo.com, loom.com | transcribe | `./knowledge/videos/` |
 | **tweet** | (fallback) | capture | bookmarks.md only |
 
 🔜 _Note: Transcription coming soon for podcasts, videos, etc but feel free to edit your own and submit back suggestions!_
@@ -231,12 +235,9 @@ crontab -e
 */30 * * * * cd /path/to/smaug && npx smaug run >> smaug.log 2>&1
 ```
 
-### Option C: systemd
+### Option C: Bree
 
-```bash
-# Create /etc/systemd/system/smaug.service
-# See docs/systemd-setup.md for details
-```
+See [`examples/bree-scheduler.js`](examples/bree-scheduler.js).
 
 ## Output
 
@@ -445,22 +446,11 @@ Your Twitter cookies may have expired. Get fresh ones from your browser.
 
 ### Only ~50-70 bookmarks fetched
 
-The npm release of bird CLI (v0.5.1) doesn't support pagination. To fetch all bookmarks, install bird from git:
+bird CLI before v0.6.0 doesn't support pagination. Update it:
 
 ```bash
-# Clone and build bird from source
-cd /tmp
-git clone https://github.com/steipete/bird.git
-cd bird
-pnpm install    # or: npm install -g pnpm && pnpm install
-pnpm run build:dist
-
-# Link globally (may need sudo or --force)
-npm link --force
-
-# Verify
-bird --version  # Should show a newer commit hash
-bird bookmarks --help  # Should show --all flag
+npm install -g @steipete/bird@latest
+bird bookmarks --help  # Should show the --all flag
 ```
 
 Then use `npx smaug fetch --all` to fetch all bookmarks with pagination.
